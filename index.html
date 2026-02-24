@@ -2,68 +2,111 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BKK Közút Élő Térkép</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { height: 100vh; width: 100%; }
         .counter {
             position: absolute; top: 15px; left: 60px; z-index: 1000;
-            background: rgba(255,255,255,0.9); padding: 10px 20px;
-            border-radius: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            font-weight: bold; font-size: 16px;
+            background: white; padding: 12px 20px;
+            border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-weight: bold; font-size: 14px; color: #333;
+            border: 2px solid #0052a4;
         }
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<div class="counter" id="stat">Események betöltése...</div>
+<div class="counter" id="stat">Adatok lekérése...</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Térkép létrehozása
     const map = L.map('map').setView([47.4979, 19.0402], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap közreműködők'
+    }).addTo(map);
 
-    const api_url = 'https://api.allorigins.win/raw?url=https://kozut.bkkinfo.hu/api/changes';
+    // BKK API URL Proxy-n keresztül (CORS hiba elkerülése végett)
+    const targetUrl = 'https://kozut.bkkinfo.hu/api/changes';
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-    fetch(api_url)
-        .then(res => res.json())
+    fetch(proxyUrl)
+        .then(response => {
+            if (!response.ok) throw new Error('Proxy hiba');
+            return response.json();
+        })
         .then(data => {
-            document.getElementById('stat').innerText = `Aktuális események: ${data.length} DB`;
+            // Az AllOrigins a 'contents' mezőbe teszi az eredeti választ stringként
+            const events = JSON.parse(data.contents);
             
-            data.forEach(event => {
+            if (!Array.isArray(events)) {
+                throw new Error('Az adatok formátuma nem lista');
+            }
+
+            document.getElementById('stat').innerText = `Aktuális események: ${events.length} DB`;
+
+            events.forEach(event => {
+                if (!event.effects) return;
+
                 event.effects.forEach(effect => {
                     if (effect.coordinates) {
                         try {
-                            const coords = JSON.parse(effect.coordinates).map(c => {
+                            // Koordináták tisztítása és átalakítása
+                            const rawCoords = JSON.parse(effect.coordinates);
+                            const latLngs = rawCoords.map(c => {
                                 const p = c.split(',');
                                 return [parseFloat(p[0]), parseFloat(p[1])];
                             });
 
-                            // Vonal rajzolása
-                            L.polyline(coords, {
-                                color: effect.code === 'lezaras' ? '#e74c3c' : '#f39c12',
-                                weight: 6,
-                                opacity: 0.8
+                            // Vonallánc rajzolása (piros a lezárásnak, narancs a többinek)
+                            const color = effect.code === 'lezaras' ? '#ff0000' : '#ff9900';
+                            L.polyline(latLngs, {
+                                color: color,
+                                weight: 5,
+                                opacity: 0.7,
+                                lineJoin: 'round'
                             }).addTo(map);
 
-                            // Ikon elhelyezése a vonal elejére
-                            const iconUrl = 'https://kozut.bkkinfo.hu' + effect.icon;
-                            const bkkIcon = L.icon({
+                            // Ikon elhelyezése
+                            const iconUrl = effect.icon.startsWith('http') 
+                                ? effect.icon 
+                                : `https://kozut.bkkinfo.hu${effect.icon}`;
+
+                            const customIcon = L.icon({
                                 iconUrl: iconUrl,
-                                iconSize: [32, 32],
-                                iconAnchor: [16, 16]
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 15],
+                                popupAnchor: [0, -15]
                             });
 
-                            L.marker(coords[0], {icon: bkkIcon})
+                            // Marker lerakása a vonal első pontjára
+                            L.marker(latLngs[0], { icon: customIcon })
                                 .addTo(map)
-                                .bindPopup(`<b>${effect.name}</b><br>Utca: ${effect.pivot.street || 'Nincs megadva'}`);
-                                
-                        } catch (e) { console.error("Kódolási hiba", e); }
+                                .bindPopup(`
+                                    <div style="min-width: 150px;">
+                                        <b style="color:#0052a4;">${effect.name}</b><br>
+                                        <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
+                                        <b>Helyszín:</b> ${effect.pivot.street || 'Ismeretlen utca'}<br>
+                                        <small>ID: ${event.id}</small>
+                                    </div>
+                                `);
+
+                        } catch (err) {
+                            console.warn("Hiba egy esemény feldolgozásakor:", err);
+                        }
                     }
                 });
             });
+        })
+        .catch(error => {
+            console.error('Hiba:', error);
+            document.getElementById('stat').innerText = "Hiba! Próbáld frissíteni az oldalt.";
+            document.getElementById('stat').style.color = "red";
         });
 </script>
 </body>
