@@ -1,11 +1,11 @@
-name: BKK és Utinform Frissítés
+name: BKK Adat Frissites
 on:
   schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
+    - cron: '*/30 * * * *' # 30 percenként frissül
+  workflow_dispatch:      # Kézzel is elindíthatod az Actions fülön
 
 jobs:
-  download-and-combine:
+  download-and-save:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -13,55 +13,14 @@ jobs:
       - name: Checkout kód
         uses: actions/checkout@v3
 
-      - name: Adatok letöltése és konvertálása
+      - name: BKK adatok letöltése
         run: |
-          # BKK adatok mentése
-          curl -L "https://kozut.bkkinfo.hu/api/changes" -o bkk_adatok.json
+          curl -L "https://kozut.bkkinfo.hu/api/changes" -o adatok.json
 
-          # Magyar Közút XML letöltése és egyszerű JSON-szerű listává alakítása (Bash-sel)
-          curl -L "https://napphub.kozut.hu/hub-web//datex2/3_3/4a8b2505-df5e-4191-8c96-b98263a771b5/pullSnapshotData" -o utinform.xml
-          
-          # Egy minimális Python szkript az XML koordináták kinyeréséhez
-          python3 -c "
-          import xml.etree.ElementTree as ET
-          import json
-          import re
-
-          combined = []
-          
-          # 1. BKK hozzáadása
-          with open('bkk_adatok.json', 'r') as f:
-              bkk = json.load(f)
-              for item in bkk:
-                  item['source'] = 'BKK'
-                  combined.append(item)
-
-          # 2. Utinform (XML) feldolgozása
-          try:
-              with open('utinform.xml', 'r') as f:
-                  xml_str = f.read()
-                  # Egyszerű koordináta keresés az XML-ben (lat/lon párok)
-                  lats = re.findall(r'<ns11:latitude>(.*?)</ns11:latitude>', xml_str)
-                  lons = re.findall(r'<ns11:longitude>(.*?)</ns11:longitude>', xml_str)
-                  
-                  for i in range(len(lats)):
-                      combined.append({
-                          'source': 'Utinform',
-                          'is_xml_event': True,
-                          'lat': lats[i],
-                          'lon': lons[i],
-                          'effects': [{'name': 'Útinform esemény', 'icon': '/img/pin/kis_aktiv_egyeb.png'}]
-                      })
-          except: pass
-
-          with open('adatok.json', 'w') as f:
-              json.dump(combined, f)
-          "
-
-      - name: Git commit és push
+      - name: Mentés a repository-ba
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add adatok.json
-          git commit -m "BKK és Utinform adatok frissítése" || exit 0
+          git commit -m "BKK adatok frissítése" || exit 0
           git push
