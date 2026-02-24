@@ -2,11 +2,10 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BKK Élő Térkép - Stabil</title>
+    <title>BKK Élő Térkép</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; }
         .counter {
             position: absolute; top: 15px; left: 60px; z-index: 1000;
@@ -16,55 +15,39 @@
     </style>
 </head>
 <body>
+    <div class="counter" id="stat">Betöltés...</div>
+    <div id="map"></div>
 
-<div class="counter" id="stat">Adatok betöltése...</div>
-<div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([47.4979, 19.0402], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const map = L.map('map').setView([47.4979, 19.0402], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // Fontos: a saját repo-dból tölti be a fájlt
-    fetch('./adatok.json')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('stat').innerText = `Események: ${data.length} DB`;
-            
-            data.forEach(event => {
-                event.effects.forEach(effect => {
-                    if (effect.coordinates) {
-                        try {
-                            const coords = JSON.parse(effect.coordinates).map(c => {
-                                const p = c.split(',');
-                                return [parseFloat(p[0]), parseFloat(p[1])];
-                            });
-
-                            L.polyline(coords, {
-                                color: effect.code === 'lezaras' ? '#d32f2f' : '#f57c00',
-                                weight: 5,
-                                opacity: 0.8
-                            }).addTo(map);
-
-                            const iconUrl = effect.icon.startsWith('http') ? effect.icon : `https://kozut.bkkinfo.hu${effect.icon}`;
-                            const bkkIcon = L.icon({
-                                iconUrl: iconUrl,
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 15]
-                            });
-
-                            L.marker(coords[0], {icon: bkkIcon})
-                                .addTo(map)
-                                .bindPopup(`<b>${effect.name}</b><br>${effect.pivot.street || ''}`);
-                        } catch (e) { console.warn("Koordináta hiba"); }
-                    }
+        fetch('./adatok.json')
+            .then(res => res.json())
+            .then(data => {
+                if (!data || data.length === 0) {
+                    document.getElementById('stat').innerText = "Nincsenek aktuális események.";
+                    return;
+                }
+                document.getElementById('stat').innerText = `Események: ${data.length} DB`;
+                data.forEach(event => {
+                    event.effects.forEach(effect => {
+                        if (effect.coordinates) {
+                            try {
+                                const coords = JSON.parse(effect.coordinates).map(c => c.split(',').map(Number));
+                                L.polyline(coords, {color: effect.code === 'lezaras' ? 'red' : 'orange', weight: 5}).addTo(map);
+                                const iconUrl = effect.icon.startsWith('http') ? effect.icon : `https://kozut.bkkinfo.hu${effect.icon}`;
+                                L.marker(coords[0], {icon: L.icon({iconUrl: iconUrl, iconSize: [30, 30]})})
+                                 .addTo(map).bindPopup(`<b>${effect.name}</b><br>${effect.pivot.street || ''}`);
+                            } catch(e) {}
+                        }
+                    });
                 });
+            })
+            .catch(err => {
+                document.getElementById('stat').innerText = "Hiba az adatok beolvasásakor.";
             });
-        })
-        .catch(err => {
-            document.getElementById('stat').innerText = "Várakozás az első frissítésre...";
-            console.error(err);
-        });
-</script>
+    </script>
 </body>
 </html>
