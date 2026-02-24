@@ -1,14 +1,14 @@
 name: BKK Adat Frissites
 on:
   schedule:
-    - cron: '*/30 * * * *' # Félóránként lefut
-  workflow_dispatch:      # Ez lehetővé teszi a kézi indítást
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   download-and-save:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # Engedély a fájl módosítására
+      contents: write
     steps:
       - name: Checkout kód
         uses: actions/checkout@v3
@@ -22,5 +22,5 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add adatok.json
-          git commit -m "BKK adatok automatikus frissítése" || exit 0
+          git commit -m "BKK adatok frissítése" || exit 0
           git push
