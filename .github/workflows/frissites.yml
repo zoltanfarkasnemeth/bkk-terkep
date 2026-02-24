@@ -1,0 +1,26 @@
+name: BKK Adat Frissites
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Félóránként lefut
+  workflow_dispatch:      # Ez lehetővé teszi a kézi indítást
+
+jobs:
+  download-and-save:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # Engedély a fájl módosítására
+    steps:
+      - name: Checkout kód
+        uses: actions/checkout@v3
+
+      - name: Adatok letöltése
+        run: |
+          curl -L "https://kozut.bkkinfo.hu/api/changes" -o adatok.json
+
+      - name: Git commit és push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add adatok.json
+          git commit -m "BKK adatok automatikus frissítése" || exit 0
+          git push
