@@ -2,10 +2,10 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>BKK Élő Térkép</title>
+    <title>BKK Élő Térkép - Időpontokkal</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
         #map { height: 100vh; width: 100%; }
         .counter {
             position: absolute; top: 15px; left: 60px; z-index: 1000;
@@ -13,7 +13,16 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-weight: bold;
             border: 2px solid #0052a4;
         }
-        .popup-time { color: #666; font-size: 0.85em; margin-top: 5px; display: block; }
+        /* Popup stílus a dátumnak */
+        .popup-date {
+            display: block;
+            margin-top: 8px;
+            padding-top: 5px;
+            border-top: 1px dashed #ccc;
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -23,7 +32,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map').setView([47.4979, 19.0402], 12);
+    const map = L.map('map').setView([47.4979, 19.0402], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
@@ -34,8 +43,8 @@
             document.getElementById('stat').innerText = `BKK Események: ${data.length} DB`;
             
             data.forEach(event => {
-                // Kimentjük a kezdési dátumot az eseményből
-                const startDate = event.start_date || 'Nincs megadva';
+                // Kimentjük a bekerülés idejét (start_date)
+                const startAt = event.start_date || "Nincs megadva";
                 
                 if (!event.effects) return;
                 
@@ -54,6 +63,7 @@
                                 opacity: 0.8
                             }).addTo(map);
 
+                            // Ikon beállítása
                             const iconUrl = effect.icon.startsWith('http') 
                                 ? effect.icon 
                                 : `https://kozut.bkkinfo.hu${effect.icon}`;
@@ -64,24 +74,20 @@
                                 iconAnchor: [15, 15]
                             });
 
-                            // Marker lerakása a dátummal kiegészítve
+                            // Marker lerakása a bővített tartalommal
                             L.marker(coords[0], {icon: bkkIcon})
                                 .addTo(map)
                                 .bindPopup(`
-                                    <div style="min-width: 160px;">
-                                        <b style="font-size: 1.1em; color: #0052a4;">${effect.name}</b><br>
-                                        <hr style="border: 0; border-top: 1px solid #eee; margin: 5px 0;">
-                                        <b>Helyszín:</b> ${effect.pivot.street || 'Ismeretlen utca'}<br>
-                                        <span class="popup-time"><b>Bekerülés ideje:</b><br>${startDate}</span>
+                                    <div style="min-width: 150px;">
+                                        <b style="color: #0052a4; font-size: 1.1em;">${effect.name}</b><br>
+                                        <small>${effect.pivot.street || ''}</small>
+                                        <span class="popup-date">📅 Bekerült: ${startAt}</span>
                                     </div>
                                 `);
-                        } catch (e) { console.warn("Hiba a koordinátákkal"); }
+                        } catch (e) { console.warn("Hiba egy koordinátánál"); }
                     }
                 });
             });
-        })
-        .catch(err => {
-            document.getElementById('stat').innerText = "Várakozás az adatokra...";
         });
 </script>
 </body>
