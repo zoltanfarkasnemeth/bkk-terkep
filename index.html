@@ -13,32 +13,46 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-weight: bold;
             border: 2px solid #0052a4;
         }
+        .popup-wrap {
+            min-width: 200px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .popup-title {
+            color: #0052a4;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .popup-street {
+            color: #555;
+            font-size: 0.9em;
+            margin-bottom: 6px;
+        }
         .popup-date {
             display: block;
-            margin-top: 8px;
-            padding-top: 5px;
+            padding: 5px 0;
             border-top: 1px dashed #ccc;
             color: #d32f2f;
             font-weight: bold;
-            font-size: 0.9em;
+            font-size: 0.88em;
         }
         .popup-ids {
             display: block;
-            margin-top: 6px;
             padding-top: 5px;
             border-top: 1px dashed #ccc;
             font-size: 0.85em;
-            color: #333;
-            line-height: 1.7em;
+            line-height: 1.9em;
         }
-        .popup-ids span {
-            display: block;
+        .popup-ids table {
+            border-collapse: collapse;
+            width: 100%;
         }
-        .popup-ids .label {
-            color: #666;
-            font-weight: normal;
+        .popup-ids td.lbl {
+            color: #888;
+            padding-right: 8px;
+            white-space: nowrap;
         }
-        .popup-ids .value {
+        .popup-ids td.val {
             font-weight: bold;
             color: #0052a4;
         }
@@ -72,7 +86,7 @@
                                 return [parseFloat(p[0]), parseFloat(p[1])];
                             });
 
-                            // Vonal rajzolása (lineweight nélkül)
+                            // Vonal rajzolása
                             L.polyline(coords, {
                                 color: effect.code === 'lezaras' ? '#d32f2f' : '#f57c00',
                                 weight: 5,
@@ -89,27 +103,43 @@
                                 iconAnchor: [15, 15]
                             });
 
-                            // Pivot mezők kiolvasása
-                            const pivotId  = effect.pivot?.id        ?? "–";
-                            const changeId = effect.pivot?.change_id ?? "–";
-                            const effectId = effect.pivot?.effect_id ?? "–";
+                            // Mezők kiolvasása a pivot-ból
+                            const street   = effect.pivot?.street    || '';
+                            const pivotId  = effect.pivot?.id        ?? '–';
+                            const changeId = effect.pivot?.change_id ?? '–';
+                            const effectId = effect.pivot?.effect_id ?? '–';
+
+                            // Popup tartalom
+                            const popupHtml = `
+                                <div class="popup-wrap">
+                                    <div class="popup-title">${effect.name}</div>
+                                    <div class="popup-street">${street}</div>
+                                    <span class="popup-date">📅 Bekerült: ${startAt}</span>
+                                    <span class="popup-ids">
+                                        <table>
+                                            <tr>
+                                                <td class="lbl">Pivot ID:</td>
+                                                <td class="val">${pivotId}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="lbl">Change ID:</td>
+                                                <td class="val">${changeId}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="lbl">Effect ID:</td>
+                                                <td class="val">${effectId}</td>
+                                            </tr>
+                                        </table>
+                                    </span>
+                                </div>
+                            `;
 
                             // Marker lerakása
                             L.marker(coords[0], {icon: bkkIcon})
                                 .addTo(map)
-                                .bindPopup(`
-                                    <div style="min-width: 180px;">
-                                        <b style="color: #0052a4; font-size: 1.1em;">${effect.name}</b><br>
-                                        <small>${effect.pivot?.street || ''}</small>
-                                        <span class="popup-date">📅 Bekerült: ${startAt}</span>
-                                        <span class="popup-ids">
-                                            <span><span class="label">Pivot ID:</span> <span class="value">${pivotId}</span></span>
-                                            <span><span class="label">Change ID:</span> <span class="value">${changeId}</span></span>
-                                            <span><span class="label">Effect ID:</span> <span class="value">${effectId}</span></span>
-                                        </span>
-                                    </div>
-                                `);
-                        } catch (e) { console.warn("Hiba egy koordinátánál"); }
+                                .bindPopup(popupHtml, { maxWidth: 280, minWidth: 200 });
+
+                        } catch (e) { console.warn("Hiba egy koordinátánál:", e); }
                     }
                 });
             });
