@@ -71,8 +71,26 @@
     fetch('./adatok.json')
         .then(res => res.json())
         .then(data => {
-            document.getElementById('stat').innerText = `BKK Események: ${data.length} DB`;
 
+            // Egyedi rekordok számlálása a 4 mező kombinációja alapján
+            const uniqueKeys = new Set();
+
+            data.forEach(event => {
+                if (!event.effects) return;
+                event.effects.forEach(effect => {
+                    const pivotId  = effect.pivot?.id        ?? '';
+                    const changeId = effect.pivot?.change_id ?? '';
+                    const startD   = event.start_date        ?? '';
+                    const endD     = event.end_date          ?? '';
+
+                    const key = `${pivotId}|${changeId}|${startD}|${endD}`;
+                    uniqueKeys.add(key);
+                });
+            });
+
+            document.getElementById('stat').innerText = `BKK Események: ${uniqueKeys.size} DB`;
+
+            // Térkép feltöltése
             data.forEach(event => {
                 const startAt = event.start_date || "Nincs megadva";
 
@@ -103,7 +121,7 @@
                                 iconAnchor: [15, 15]
                             });
 
-                            // Mezők kiolvasása a pivot-ból
+                            // Mezők kiolvasása
                             const street   = effect.pivot?.street    || '';
                             const pivotId  = effect.pivot?.id        ?? '–';
                             const changeId = effect.pivot?.change_id ?? '–';
@@ -134,7 +152,6 @@
                                 </div>
                             `;
 
-                            // Marker lerakása
                             L.marker(coords[0], {icon: bkkIcon})
                                 .addTo(map)
                                 .bindPopup(popupHtml, { maxWidth: 280, minWidth: 200 });
